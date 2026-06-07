@@ -36,10 +36,10 @@ namespace OrbitBook.Infrastructure.Data
             modelBuilder.Entity<Review>().ToTable("REVIEWS");
             modelBuilder.Entity<AiRecommendation>().ToTable("AI_RECOMMENDATIONS");
 
-            // Ignorando Tabela Ticket que não existe no SQL Novo
+            // Ignorando Tabela Ticket que nï¿½o existe no SQL Novo
             modelBuilder.Ignore<Ticket>();
             
-            // Configuração das propriedades decimais devido ao warning do Oracle EF Core
+            // Configuraï¿½ï¿½o das propriedades decimais devido ao warning do Oracle EF Core
             modelBuilder.Entity<Booking>()
                 .Property(b => b.TotalPrice)
                 .HasColumnType("decimal(18,2)");
@@ -52,7 +52,7 @@ namespace OrbitBook.Infrastructure.Data
                 .Property(p => p.Amount)
                 .HasColumnType("decimal(18,2)");
 
-            // Configurações e restrições EXTRAS
+            // Configuraï¿½ï¿½es e restriï¿½ï¿½es EXTRAS
             modelBuilder.Entity<User>()
                 .HasOne(u => u.Role)
                 .WithMany(r => r.Users)
@@ -77,6 +77,31 @@ namespace OrbitBook.Infrastructure.Data
                 .HasOne(p => p.Booking)
                 .WithOne(b => b.Payment)
                 .HasForeignKey<Payment>(p => p.BookingId);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.Status)
+                .WithMany(s => s.Bookings)
+                .HasForeignKey(b => b.StatusId);
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.Booking)
+                .WithOne(b => b.Review)
+                .HasForeignKey<Review>(r => r.BookingId);
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId);
+
+            modelBuilder.Entity<AiRecommendation>()
+                .HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId);
+
+            modelBuilder.Entity<AiRecommendation>()
+                .HasOne(a => a.Destination)
+                .WithMany()
+                .HasForeignKey(a => a.DestinationId);
         }
     }
 }

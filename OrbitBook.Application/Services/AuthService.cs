@@ -26,10 +26,11 @@ namespace OrbitBook.Application.Services
         {
             var existingUser = await _userRepository.GetByEmailAsync(request.Email);
             if (existingUser != null)
-                throw new InvalidOperationException("E-mail já cadastrado.");
+                throw new InvalidOperationException("E-mail jï¿½ cadastrado.");
 
             var newUser = new User
             {
+                RoleId = 1, // role padrÃ£o: VIAJANTE
                 Name = request.Name,
                 Email = request.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
@@ -38,7 +39,7 @@ namespace OrbitBook.Application.Services
 
             await _userRepository.AddAsync(newUser);
 
-            return "Usuário cadastrado com sucesso.";
+            return "Usuï¿½rio cadastrado com sucesso.";
         }
 
         public async Task<TokenResponseDto?> AuthenticateAsync(LoginDto loginDto)

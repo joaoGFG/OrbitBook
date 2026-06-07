@@ -9,7 +9,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("OracleConnection") ?? "Data Source=oracle.fiap.com.br:1521/ORCL;User Id=RM559863;Password=110306;";
+var connectionString = builder.Configuration.GetConnectionString("Oracle") ?? "Data Source=oracle.fiap.com.br:1521/ORCL;User Id=RM559863;Password=110306;";
 builder.Services.AddInfrastructureServices(connectionString);
 
 builder.Services.AddHealthChecks()
@@ -27,6 +27,7 @@ builder.Services.AddAuthentication(options =>
 {
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
+    options.MapInboundClaims = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
@@ -44,7 +45,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "OrbitBook.API", Version = "v1" });
     
-    // Configuração para aceitar o Bearer Token no Swagger UI
+    // Configuraï¿½ï¿½o para aceitar o Bearer Token no Swagger UI
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
