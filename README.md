@@ -6,16 +6,12 @@
 ![Database](https://img.shields.io/badge/Database-Oracle%2019c%2B-red)
 ![Tests](https://img.shields.io/badge/Tests-xUnit%20%2B%20Moq-yellow)
 
-API REST para reservas de viagens espaciais. Cobre o ciclo completo de um viajante: explorar destinos, criar reservas, gerenciar passageiros e processar pagamentos — tudo com autenticação JWT e banco de dados Oracle.
-
-> **Live API:** `https://orbitbook-api-rm560077.azurewebsites.net`
-> **Swagger UI:** `https://orbitbook-api-rm560077.azurewebsites.net/swagger`
+API REST para reservas de viagens espaciais. Cobre o ciclo completo de um viajante: explorar destinos, criar reservas, gerenciar passageiros, emitir tickets e avaliar missões — com autenticação JWT, controle de acesso por perfil (ADMIN / VIAJANTE) e banco de dados Oracle.
 
 ---
 
 ## Sumário
 
-- [Macro Arquitetura](#macro-arquitetura)
 - [Clean Architecture](#clean-architecture)
 - [Diagrama de Entidades](#diagrama-de-entidades)
 - [Fluxo de Autenticação](#fluxo-de-autenticação)
@@ -24,75 +20,24 @@ API REST para reservas de viagens espaciais. Cobre o ciclo completo de um viajan
 - [Exemplos de Requisições](#exemplos-de-requisições)
 - [Testes](#testes)
 - [Docker](#docker)
-- [CI/CD](#cicd)
 - [Estrutura do Repositório](#estrutura-do-repositório)
-
----
-
-## Macro Arquitetura
-
-```mermaid
-flowchart TD
-    Dev["Desenvolvedor\n(Local Machine)"]
-    ADO["Azure DevOps\n(Repos + Boards + Pipelines)"]
-    ACR["Azure Container Registry\norbitbookrm560077"]
-    WA["Azure Web App\norbitbook-api-rm560077\n(South Africa North)"]
-    DB["Oracle Database\noracle.fiap.com.br:1521"]
-    Client["Cliente\n(Browser / Mobile / Swagger)"]
-
-    Dev -->|"git push + PR + merge"| ADO
-    ADO -->|"CI: build + test"| ADO
-    ADO -->|"CD: docker build + push"| ACR
-    ACR -->|"container pull no deploy"| WA
-    WA -->|"EF Core + Oracle Driver"| DB
-    Client -->|"HTTPS REST"| WA
-```
-
-| Componente | Recurso | Descrição |
-|---|---|---|
-| Source Control | Azure Repos | Git com branch `main` protegida |
-| Work Items | Azure Boards | Issues vinculados a commits e PRs |
-| CI/CD | Azure Pipelines (YAML) | Build, test, Docker push, deploy |
-| Container Registry | Azure ACR (`orbitbookrm560077`) | Armazena imagens Docker |
-| Hosting | Azure Web App (Linux container) | Executa a API .NET 9 |
-| Banco de Dados | Oracle 19c (`oracle.fiap.com.br`) | PaaS via FIAP |
-| IaC | `scripts/script-infra-azure.sh` | Provisiona todos os recursos Azure |
+- [Integrantes](#integrantes)
 
 ---
 
 ## Clean Architecture
 
-O projeto segue **Clean Architecture** com quatro camadas bem definidas. A regra de dependência é estrita: as camadas internas nunca dependem das externas.
+O projeto segue **Clean Architecture** com cinco projetos. A regra de dependência é estrita: as camadas internas nunca conhecem as externas.
 
-```mermaid
-graph TD
-    subgraph Camadas
-        direction TB
-        API["OrbitBook.API\nControllers · Middlewares · JWT · Swagger"]
-        APP["OrbitBook.Application\nServices · Interfaces · DTOs · Casos de Uso"]
-        INF["OrbitBook.Infrastructure\nDbContext · Repositories · EF Core Oracle"]
-        DOM["OrbitBook.Domain\nEntidades de Negócio"]
-    end
 
-    DB[("Oracle 19c")]
-    TEST["OrbitBook.Tests\nxUnit + Moq"]
-
-    API --> APP
-    APP --> DOM
-    INF --> APP
-    INF --> DOM
-    INF --> DB
-    TEST --> APP
-    TEST --> DOM
-```
 
 | Projeto | Responsabilidade |
 |---|---|
-| `OrbitBook.Domain` | Entidades puras (`User`, `Booking`, `Destination` etc.), sem dependências externas |
-| `OrbitBook.Application` | Casos de uso, interfaces de repositório, DTOs, lógica de negócio |
-| `OrbitBook.Infrastructure` | Implementação dos repositórios, configuração do Oracle EF Core, DI |
-| `OrbitBook.API` | Controllers HTTP, middlewares, configuração de autenticação JWT, Swagger |
-| `OrbitBook.Tests` | Testes unitários com xUnit e Moq, focados na camada Application |
+| `OrbitBook.Domain` | Entidades puras sem dependências externas |
+| `OrbitBook.Application` | Casos de uso, interfaces de repositório, DTOs, regras de negócio |
+| `OrbitBook.Infrastructure` | Repositórios, `DbContext`, Migrations, seed data, DI |
+| `OrbitBook.API` | Controllers HTTP, middlewares, JWT, Swagger |
+| `OrbitBook.Tests` | Testes unitários com xUnit e Moq |
 
 **Stack:**
 
@@ -102,11 +47,10 @@ graph TD
 | Banco de Dados | Oracle 19c+ |
 | ORM | Entity Framework Core 8.23 |
 | Autenticação | JWT Bearer (HS256) |
-| Hash de Senha | BCrypt.Net-Next |
+| Hash de Senha | BCrypt.Net-Next 4.2.0 |
 | Documentação | Swagger / OpenAPI |
 | Testes | xUnit 2.9.2 + Moq 4.20.72 |
 | Containerização | Docker (multi-stage) |
-| CI/CD | Azure Pipelines |
 
 ---
 
@@ -140,6 +84,7 @@ erDiagram
         decimal DistanceKm
         decimal BasePrice
         int Capacity
+        int AvailableSeats
         string ImageUrl
     }
     BOOKING_STATUS {
@@ -163,14 +108,17 @@ erDiagram
         string FullName
         string DocumentNumber
         datetime BirthDate
+        string MedicalStatus
     }
-    PAYMENT {
+    TICKET {
         int Id PK
         int BookingId FK
-        string Method
-        decimal Amount
+        int PassengerId FK
+        string SeatNumber
+        string TicketClass
+        datetime IssueDate
         string Status
-        datetime PaidAt
+        string QrCode
     }
     REVIEW {
         int Id PK
@@ -179,25 +127,28 @@ erDiagram
         int Rating
         string Comment
     }
-    AI_RECOMMENDATION {
-        int Id PK
-        int UserId FK
-        string PromptUsed
-        string ResponseText
-        string ModelUsed
-    }
 
     ROLE ||--o{ USER : "has"
     USER ||--o{ BOOKING : "makes"
     USER ||--o{ REVIEW : "writes"
-    USER ||--o{ AI_RECOMMENDATION : "receives"
     DESTINATION_TYPE ||--o{ DESTINATION : "categorizes"
     DESTINATION ||--o{ BOOKING : "booked in"
     BOOKING_STATUS ||--o{ BOOKING : "defines status"
     BOOKING ||--o{ PASSENGER : "includes"
-    BOOKING ||--|| PAYMENT : "has"
+    BOOKING ||--o{ TICKET : "generates"
     BOOKING ||--o| REVIEW : "receives"
+    PASSENGER ||--o{ TICKET : "assigned to"
 ```
+
+### Status de reserva
+
+| StatusId | Nome | Descrição |
+|---|---|---|
+| 1 | PENDENTE | Reserva criada, aguardando confirmação |
+| 2 | CONFIRMADO | Pagamento confirmado |
+| 3 | EM_MISSAO | Viagem em andamento |
+| 4 | CONCLUIDO | Missão finalizada — permite avaliação |
+| 5 | CANCELADO | Reserva cancelada |
 
 ---
 
@@ -209,30 +160,37 @@ sequenceDiagram
     participant API as OrbitBook API
     participant DB as Oracle DB
 
-    Note over C,DB: Registro de novo usuário
+    Note over C,DB: Registro
     C->>API: POST /api/Auth/register
-    API->>DB: Verifica se email já existe
+    API->>DB: Verifica unicidade do email
     DB-->>API: Não encontrado
     API->>API: BCrypt.HashPassword(password)
-    API->>DB: INSERT User (RoleId=1 VIAJANTE)
+    API->>DB: INSERT User com RoleId = 1 (VIAJANTE)
     DB-->>API: User criado
     API-->>C: 201 Created
 
-    Note over C,DB: Login e obtenção do token
+    Note over C,DB: Login
     C->>API: POST /api/Auth/login
     API->>DB: SELECT User WHERE email = ?
-    DB-->>API: User + PasswordHash
+    DB-->>API: User + PasswordHash + Role
     API->>API: BCrypt.Verify(password, hash)
-    API->>API: Gera JWT HS256\nClaims: userId, email, role\nExpira em: 2 horas
+    API->>API: Gera JWT HS256\nClaims: userId · email · role\nExpira: 2 horas
     API-->>C: 200 OK { token, userId, role }
 
     Note over C,DB: Requisição autenticada
     C->>API: GET /api/Bookings\nAuthorization: Bearer token
-    API->>API: Valida JWT + extrai userId dos claims
+    API->>API: Valida JWT · extrai userId e role dos claims
     API->>DB: SELECT Bookings WHERE userId = ?
     DB-->>API: Lista de reservas
     API-->>C: 200 OK [{ ...bookings }]
 ```
+
+### Perfis de acesso
+
+| Role | RoleId | Permissões |
+|---|---|---|
+| **VIAJANTE** | 1 | Gerencia as próprias reservas, cria avaliações, visualiza tickets |
+| **ADMIN** | 2 | Acesso total: gerencia destinos, todos os usuários e todas as reservas |
 
 ---
 
@@ -247,15 +205,15 @@ sequenceDiagram
 ### 1. Clone o repositório
 
 ```bash
-git clone https://dev.azure.com/RM560077/orbitbook/_git/orbitbook
-cd orbitbook
+git clone https://github.com/caiolucasxz55/OrbitBook.git
+cd OrbitBook
 ```
 
 ### 2. Configure os segredos
 
 Via variáveis de ambiente (recomendado):
 
-```bash
+```powershell
 # Windows PowerShell
 $env:ConnectionStrings__Oracle = "Data Source=oracle.fiap.com.br:1521/ORCL;User Id=RM560077;Password=suasenha;"
 $env:JwtParameters__Secret     = "OrbitBookSuperSecretKey2025ForJwtTokensNeedToBeLong"
@@ -263,7 +221,7 @@ $env:JwtParameters__Issuer     = "OrbitBookApi"
 $env:JwtParameters__Audience   = "OrbitBookClients"
 ```
 
-Ou edite `OrbitBook.API/appsettings.json` (apenas desenvolvimento local):
+Ou edite `OrbitBook.API/appsettings.json` apenas para desenvolvimento local:
 
 ```json
 {
@@ -278,7 +236,20 @@ Ou edite `OrbitBook.API/appsettings.json` (apenas desenvolvimento local):
 }
 ```
 
-### 3. Build e execução
+### 3. Aplicar migrations e seed data
+
+```bash
+dotnet ef database update --project OrbitBook.Infrastructure --startup-project OrbitBook.API
+```
+
+O seed cria automaticamente:
+- 2 roles: `VIAJANTE`, `ADMIN`
+- 5 status de reserva: `PENDENTE` → `CONFIRMADO` → `EM_MISSAO` → `CONCLUIDO` → `CANCELADO`
+- 4 tipos de destino: `SUBORBITAL`, `ORBITAL`, `LUNAR`, `INTERPLANETARIO`
+- 8 destinos espaciais pré-cadastrados
+- 1 usuário admin padrão
+
+### 4. Build e execução
 
 ```bash
 dotnet restore
@@ -287,7 +258,6 @@ dotnet run --project OrbitBook.API/OrbitBook.API.csproj
 ```
 
 Endpoints disponíveis:
-- API: `http://localhost:5000`
 - Swagger UI: `http://localhost:5000/swagger`
 - Health Check: `http://localhost:5000/health`
 
@@ -295,45 +265,70 @@ Endpoints disponíveis:
 
 ## Endpoints da API
 
-> Rotas com 🔒 exigem `Authorization: Bearer <token>`.
+> 🔒 = requer `Authorization: Bearer <token>` | 👑 = requer role **ADMIN**
 
-### Autenticação — `api/Auth`
+### Autenticação — `/api/Auth`
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| POST | `/api/Auth/register` | — | Cria novo usuário |
+| POST | `/api/Auth/register` | — | Registra novo usuário com role VIAJANTE |
 | POST | `/api/Auth/login` | — | Autentica e retorna JWT |
-| GET | `/api/Auth/me` | 🔒 | Retorna dados do usuário logado |
+| GET | `/api/Auth/me` | 🔒 | Retorna email e role do usuário logado |
 
-### Destinos — `api/Destinations`
+### Destinos — `/api/Destinations`
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/api/Destinations` | — | Lista todos os destinos espaciais |
+| GET | `/api/Destinations` | — | Lista todos os destinos |
 | GET | `/api/Destinations/{id}` | — | Retorna um destino pelo ID |
-| PUT | `/api/Destinations/{id}` | 🔒 | Atualiza dados de um destino |
-| DELETE | `/api/Destinations/{id}` | 🔒 | Remove um destino |
+| POST | `/api/Destinations` | 🔒 👑 | Cria novo destino |
+| PATCH | `/api/Destinations/{id}` | 🔒 👑 | Atualiza dados de um destino |
+| DELETE | `/api/Destinations/{id}` | 🔒 👑 | Remove um destino |
 
-### Reservas — `api/Bookings`
+### Reservas — `/api/Bookings`
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | GET | `/api/Bookings` | 🔒 | Lista reservas do usuário logado |
+| GET | `/api/Bookings/all` | 🔒 👑 | Lista todas as reservas (admin) |
 | GET | `/api/Bookings/{id}` | 🔒 | Retorna uma reserva pelo ID |
 | POST | `/api/Bookings` | 🔒 | Cria nova reserva |
-| PUT | `/api/Bookings/{id}` | 🔒 | Atualiza reserva (somente status PENDING) |
-| DELETE | `/api/Bookings/{id}` | 🔒 | Cancela uma reserva |
+| PATCH | `/api/Bookings/{id}/status` | 🔒 | Atualiza o status da reserva |
+| DELETE | `/api/Bookings/{id}` | 🔒 | Cancela / remove a reserva |
 
 **Regras de negócio:**
-- `TotalPrice` é calculado automaticamente: `basePrice × numPassengers`
-- Só reservas com `StatusId = 1` (PENDING) podem ser editadas
-- Cada usuário acessa apenas suas próprias reservas (UserId extraído do JWT)
+- `TotalPrice` calculado automaticamente: `basePrice × numPassengers`
+- VIAJANTE só acessa as próprias reservas; ADMIN acessa todas
+- Avaliação só é permitida após status `CONCLUIDO`
+
+### Avaliações — `/api/Reviews`
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/api/Reviews/destination/{destinationId}` | — | Lista avaliações de um destino |
+| POST | `/api/Reviews` | 🔒 | Cria avaliação (reserva deve estar CONCLUIDA) |
+| DELETE | `/api/Reviews/{id}` | 🔒 | Remove avaliação (própria ou admin) |
+
+### Tickets — `/api/Tickets`
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/api/Tickets/booking/{bookingId}` | 🔒 | Lista tickets de uma reserva |
+| POST | `/api/Tickets` | 🔒 | Emite ticket para um passageiro |
+
+### Usuários — `/api/Users`
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/api/Users` | 🔒 👑 | Lista todos os usuários |
+| GET | `/api/Users/{id}` | 🔒 | Retorna usuário pelo ID (próprio ou admin) |
+| DELETE | `/api/Users/{id}` | 🔒 👑 | Remove usuário |
 
 ---
 
 ## Exemplos de Requisições
 
-> Todos os exemplos podem ser executados via **Swagger UI**, **Postman** ou **curl**.
+> Execute via **Swagger UI**, **Postman** ou **curl**.
 
 ### 1. Registrar usuário
 
@@ -366,6 +361,7 @@ Content-Type: application/json
 ```
 
 **Resposta `200 OK`:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -374,17 +370,17 @@ Content-Type: application/json
 }
 ```
 
-> Copie o valor de `token` e use no header `Authorization: Bearer <token>` nas próximas requisições.
+> Copie o `token` e use como `Bearer <token>` no header `Authorization`.
 
 ---
 
 ### 3. Autenticar no Swagger UI
 
-1. Acesse `/swagger`
+1. Acesse `http://localhost:5000/swagger`
 2. Execute `POST /api/Auth/login` e copie o token
-3. Clique em **Authorize** (ícone 🔒 no topo)
+3. Clique em **Authorize** (ícone de cadeado no topo da página)
 4. Digite: `Bearer eyJhbGci...`
-5. Clique em **Authorize** — todos os endpoints protegidos ficam liberados
+5. Clique em **Authorize** — todos os endpoints protegidos ficam disponíveis
 
 ---
 
@@ -395,6 +391,7 @@ GET /api/Destinations
 ```
 
 **Resposta `200 OK`:**
+
 ```json
 [
   {
@@ -404,6 +401,7 @@ GET /api/Destinations
     "distanceKm": 400,
     "basePrice": 250000.00,
     "capacity": 6,
+    "availableSeats": 4,
     "imageUrl": "https://example.com/leo.jpg",
     "typeName": "ORBITAL"
   }
@@ -428,6 +426,7 @@ Content-Type: application/json
 ```
 
 **Resposta `201 Created`:**
+
 ```json
 {
   "id": 10,
@@ -435,7 +434,7 @@ Content-Type: application/json
   "destinationId": 1,
   "destinationName": "Low Earth Orbit",
   "statusId": 1,
-  "statusName": "PENDING",
+  "statusName": "PENDENTE",
   "departureDate": "2026-09-15T10:00:00",
   "returnDate": "2026-09-22T10:00:00",
   "totalPrice": 500000.00,
@@ -445,57 +444,107 @@ Content-Type: application/json
 
 ---
 
-### 6. Atualizar reserva
+### 6. Atualizar status da reserva
 
 ```http
-PUT /api/Bookings/10
+PATCH /api/Bookings/10/status
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "departureDate": "2026-10-01T10:00:00",
-  "returnDate": "2026-10-08T10:00:00",
-  "numPassengers": 3
+  "statusId": 2
 }
 ```
 
-**Resposta `200 OK`:** retorna a reserva atualizada com `totalPrice` recalculado.
+**Resposta `200 OK`:** retorna a reserva com `statusName: "CONFIRMADO"`.
 
 ---
 
-### 7. Cancelar reserva
+### 7. Criar avaliação (reserva CONCLUIDA)
 
 ```http
-DELETE /api/Bookings/10
-Authorization: Bearer <token>
-```
-
-**Resposta `204 No Content`**
-
----
-
-### 8. Atualizar destino
-
-```http
-PUT /api/Destinations/1
+POST /api/Reviews
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "name": "Low Earth Orbit — Updated",
-  "description": "Updated description.",
-  "distanceKm": 420,
-  "basePrice": 275000.00,
-  "capacity": 8,
-  "imageUrl": "https://example.com/leo-new.jpg"
+  "bookingId": 10,
+  "rating": 5,
+  "comment": "Experiência incrível! A ausência de gravidade supera qualquer expectativa."
 }
 ```
+
+**Resposta `201 Created`:**
+
+```json
+{
+  "id": 3,
+  "bookingId": 10,
+  "userId": 1,
+  "rating": 5,
+  "comment": "Experiência incrível! A ausência de gravidade supera qualquer expectativa."
+}
+```
+
+---
+
+### 8. Emitir ticket para passageiro
+
+```http
+POST /api/Tickets
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "bookingId": 10,
+  "passengerId": 5,
+  "seatNumber": "A1",
+  "ticketClass": "FIRST"
+}
+```
+
+**Resposta `201 Created`:**
+
+```json
+{
+  "id": 7,
+  "bookingId": 10,
+  "passengerId": 5,
+  "seatNumber": "A1",
+  "ticketClass": "FIRST",
+  "issueDate": "2026-06-09T14:30:00",
+  "status": "ACTIVE",
+  "qrCode": "ORBIT-10-5-A1"
+}
+```
+
+---
+
+### 9. Criar destino (ADMIN)
+
+```http
+POST /api/Destinations
+Authorization: Bearer <token-admin>
+Content-Type: application/json
+
+{
+  "typeId": 3,
+  "name": "Lunar Gateway",
+  "description": "Estação orbital lunar a 400.000 km da Terra.",
+  "distanceKm": 400000,
+  "basePrice": 5000000.00,
+  "capacity": 4,
+  "imageUrl": "https://example.com/lunar-gateway.jpg"
+}
+```
+
+**Resposta `201 Created`**
 
 ---
 
 ## Testes
 
-O projeto utiliza **xUnit** como framework de testes e **Moq** para mocking de dependências, seguindo o padrão **AAA (Arrange / Act / Assert)**.
+O projeto usa **xUnit** como framework de testes e **Moq** para mocking, seguindo o padrão **AAA (Arrange / Act / Assert)**.
 
 ### Executar os testes
 
@@ -513,25 +562,25 @@ dotnet test OrbitBook.Tests/OrbitBook.Tests.csproj --configuration Release
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
-### Estrutura do projeto de testes
+### Estrutura
 
 ```
 OrbitBook.Tests/
 └── Services/
-    └── AuthServiceTests.cs    ← Testes do AuthService
+    └── AuthServiceTests.cs
 ```
 
 ### Casos de teste — `AuthServiceTests`
 
 ```mermaid
 flowchart LR
-    Suite["AuthServiceTests"] --> Autenticar["AuthenticateAsync"]
-    Autenticar --> T1["✅ Credenciais válidas\n→ retorna TokenResponseDto\n   com token, userId e role"]
-    Autenticar --> T2["❌ Email não cadastrado\n→ retorna null"]
-    Autenticar --> T3["❌ Senha incorreta\n→ retorna null"]
+    Suite["AuthServiceTests"] --> M["AuthenticateAsync"]
+    M --> T1["✅ Credenciais válidas\n→ TokenResponseDto com token,\n   userId e role corretos"]
+    M --> T2["❌ Email não cadastrado\n→ retorna null"]
+    M --> T3["❌ Senha incorreta\n→ retorna null"]
 ```
 
-#### Setup da classe de teste
+#### Setup da classe
 
 ```csharp
 public class AuthServiceTests
@@ -545,7 +594,6 @@ public class AuthServiceTests
         _mockUserRepository = new Mock<IUserRepository>();
         _mockConfiguration  = new Mock<IConfiguration>();
 
-        // JWT Secret configurado via mock
         _mockConfiguration
             .Setup(c => c["JwtParameters:Secret"])
             .Returns("OrbitBookSuperSecretKey2025ForJwtTokensNeedToBeLongEnoughToValidate");
@@ -650,7 +698,7 @@ public async Task AuthenticateAsync_ComSenhaInvalida_DeveRetornarNulo()
 
 ---
 
-### Saída esperada ao rodar os testes
+### Saída esperada
 
 ```
 Starting test execution, please wait...
@@ -670,90 +718,67 @@ Total tests: 3
 
 ## Docker
 
-### Build da imagem
+### Build e execução
 
 ```bash
 docker build -t orbitbook-api .
-```
 
-### Executar o container
-
-```bash
 docker run -p 8080:8080 \
   -e "ConnectionStrings__Oracle=Data Source=<host>:1521/<service>;User Id=<user>;Password=<pass>;" \
-  -e "JwtParameters__Secret=SuaChaveSecreta" \
+  -e "JwtParameters__Secret=SuaChaveSecretaAqui" \
   orbitbook-api
 ```
 
-API disponível em `http://localhost:8080` | Swagger em `http://localhost:8080/swagger`.
+API em `http://localhost:8080` | Swagger em `http://localhost:8080/swagger`.
 
 ### Estrutura do Dockerfile (multi-stage)
 
 ```
 Stage 1: base      → aspnet:9.0 (apenas runtime)
-Stage 2: build     → sdk:9.0 (compila a solução)
-Stage 3: publish   → gera Release build
-Stage 4: final     → copia publish → porta 8080 / 8081
+Stage 2: build     → sdk:9.0 (compila a solução completa)
+Stage 3: publish   → gera Release build otimizado
+Stage 4: final     → copia artefato → porta 8080 / 8081
 ```
-
----
-
-## CI/CD
-
-Pipeline em `azure-pipelines.yml`, disparado automaticamente em **merge para `main`**.
-
-```mermaid
-flowchart LR
-    Push["Push / merge\npara main"] --> CI
-
-    subgraph CI["Stage: CI — Build & Test"]
-        direction TB
-        C1["Install .NET 9 SDK"] --> C2["dotnet restore"]
-        C2 --> C3["dotnet build Release"]
-        C3 --> C4["dotnet test\n(publica TRX no Azure)"]
-        C4 --> C5["dotnet publish + zip"]
-    end
-
-    subgraph CD["Stage: CD — Deploy"]
-        direction TB
-        D1["Docker build"] --> D2["Push para ACR\n(orbitbookrm560077)"]
-        D2 --> D3["Atualiza Azure Web App\n(orbitbook-api-rm560077)"]
-        D3 --> D4["Restart Web App"]
-    end
-
-    CI --> CD
-```
-
-Segredos (Oracle connection string, JWT secret) são armazenados como **Azure Web App Application Settings**, nunca no código-fonte.
 
 ---
 
 ## Estrutura do Repositório
 
 ```
-orbitbook/
-├── azure-pipelines.yml              # Pipeline CI/CD (YAML)
-├── Dockerfile                       # Multi-stage .NET 9 build
-├── scripts/
-│   ├── script-infra-azure.sh        # Provisiona recursos Azure via CLI
-│   └── script-bd.sql                # DDL Oracle (tabelas, sequências)
+OrbitBook/
+├── Dockerfile
+├── migration_script.sql                 # DDL Oracle (tabelas, FK, índices)
 ├── OrbitBook.API/
-│   ├── Controllers/                 # AuthController, BookingsController, DestinationsController
-│   ├── Middlewares/                 # GlobalExceptionHandlerMiddleware
+│   ├── Controllers/
+│   │   ├── AuthController.cs
+│   │   ├── BookingsController.cs
+│   │   ├── DestinationsController.cs
+│   │   ├── ReviewsController.cs
+│   │   ├── TicketsController.cs
+│   │   └── UsersController.cs
+│   ├── Middlewares/
+│   │   └── GlobalExceptionHandlerMiddleware.cs
 │   ├── appsettings.json
 │   └── Program.cs
 ├── OrbitBook.Application/
-│   ├── DTOs/                        # RegisterDto, LoginDto, BookingDto, DestinationDto...
+│   ├── DTOs/
 │   ├── Interfaces/
-│   │   ├── Repositories/            # IUserRepository, IBookingRepository, IDestinationRepository
-│   │   └── Services/                # IAuthService, IBookingService, IDestinationService
-│   └── Services/                    # AuthService, BookingService, DestinationService
+│   │   ├── Repositories/                # IUserRepository · IBookingRepository · IDestinationRepository
+│   │   │                                # IReviewRepository · ITicketRepository
+│   │   └── Services/                    # IAuthService · IBookingService · IDestinationService
+│   │                                    # IReviewService · ITicketService · IUserService
+│   └── Services/                        # Implementações dos serviços
 ├── OrbitBook.Domain/
-│   └── Entities/                    # User, Role, Booking, Destination, Passenger, Payment, Review...
+│   └── Entities/                        # User · Role · Booking · Destination · Passenger
+│                                        # Ticket · Review · BookingStatus · DestinationType
 ├── OrbitBook.Infrastructure/
-│   ├── Data/                        # OrbitBookDbContext
-│   ├── DependencyInjection/         # InfrastructureServiceRegistration
-│   └── Repositories/                # UserRepository, BookingRepository, DestinationRepository
+│   ├── Data/
+│   │   └── OrbitBookDbContext.cs         # EF Core + Seed Data
+│   ├── Migrations/                      # 4 migrations (InitialCreate → SeedData)
+│   ├── DependencyInjection/
+│   │   └── InfrastructureServiceRegistration.cs
+│   └── Repositories/                    # UserRepository · BookingRepository · DestinationRepository
+│                                        # ReviewRepository · TicketRepository
 └── OrbitBook.Tests/
     └── Services/
         └── AuthServiceTests.cs
@@ -765,8 +790,8 @@ orbitbook/
 
 | Nome | RM |
 |---|---|
-Caio Lucas Silva Gomes RM560077
-João Gabriel Fuchss Grecco RM559863
-Gabriel Gomes Cardoso RM559597
-Julia Damasceno Busso RM560293
-Jhonatan Quispe Torrez RM560601
+| Caio Lucas Silva Gomes | RM560077 |
+| João Gabriel Fuchss Grecco | RM559863 |
+| Gabriel Gomes Cardoso | RM559597 |
+| Julia Damasceno Busso | RM560293 |
+| Jhonatan Quispe Torrez | RM560601 |
