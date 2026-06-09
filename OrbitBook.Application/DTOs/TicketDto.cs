@@ -1,20 +1,23 @@
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace OrbitBook.Domain.Entities
+﻿namespace OrbitBook.Application.DTOs
 {
-    public class Ticket
+    public class TicketDto
     {
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public int BookingId { get; set; }
         public int PassengerId { get; set; }
+        public string PassengerName { get; set; } = string.Empty;
         public string SeatNumber { get; set; } = string.Empty;
         public string TicketClass { get; set; } = string.Empty;
         public DateTime IssueDate { get; set; }
         public string Status { get; set; } = string.Empty;
         public string QrCode { get; set; } = string.Empty;
+    }
 
-        public Booking? Booking { get; set; }
-        public Passenger? Passenger { get; set; }
+    public class CreateTicketDto
+    {
+        public int BookingId { get; set; }
+        public int PassengerId { get; set; }
+        public string SeatNumber { get; set; } = string.Empty;
+        public string TicketClass { get; set; } = string.Empty;
     }
 }

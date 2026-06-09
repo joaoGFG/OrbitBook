@@ -23,6 +23,15 @@ namespace OrbitBook.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Booking>> GetAllAsync()
+        {
+            return await _context.Bookings
+                .Include(b => b.Destination)
+                .Include(b => b.Status)
+                .Include(b => b.User)
+                .ToListAsync();
+        }
+
         public async Task<Booking?> GetByIdAsync(int id)
         {
             return await _context.Bookings
@@ -37,6 +46,18 @@ namespace OrbitBook.Infrastructure.Repositories
             _context.Bookings.Add(booking);
             await _context.SaveChangesAsync();
             return booking;
+        }
+
+        public async Task UpdateAsync(Booking booking)
+        {
+            _context.Bookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteAsync(Booking booking)
+        {
+            _context.Bookings.Remove(booking);
+            await _context.SaveChangesAsync();
         }
     }
 }

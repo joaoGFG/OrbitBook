@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Oracle.EntityFrameworkCore.Metadata;
 using OrbitBook.Infrastructure.Data;
@@ -11,9 +12,11 @@ using OrbitBook.Infrastructure.Data;
 namespace OrbitBook.Infrastructure.Migrations
 {
     [DbContext(typeof(OrbitBookDbContext))]
-    partial class OrbitBookDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609022946_AddSeedDataWithAdmin")]
+    partial class AddSeedDataWithAdmin
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

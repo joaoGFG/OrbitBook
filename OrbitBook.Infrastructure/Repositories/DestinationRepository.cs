@@ -34,5 +34,17 @@ namespace OrbitBook.Infrastructure.Repositories
             await _context.SaveChangesAsync();
             return destination;
         }
+
+        public async Task UpdateAsync(Destination destination)
+        {
+            _context.Destinations.Update(destination);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteAsync(Destination destination)
+        {
+            _context.Destinations.Remove(destination);
+            await _context.SaveChangesAsync();
+        }
     }
 }

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace OrbitBook.Application.DTOs
 {
     public class BookingDto
@@ -20,5 +23,20 @@ namespace OrbitBook.Application.DTOs
         public DateTime DepartureDate { get; set; }
         public DateTime ReturnDate { get; set; }
         public int NumPassengers { get; set; }
+
+        public List<CreateBookingPassengerDto> Passengers { get; set; } = new();
+    }
+
+    public class CreateBookingPassengerDto
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string DocumentNumber { get; set; } = string.Empty;
+        public DateTime BirthDate { get; set; }
+        public string MedicalStatus { get; set; } = string.Empty;
+    }
+
+    public class UpdateBookingStatusDto
+    {
+        public int StatusId { get; set; }
     }
 }

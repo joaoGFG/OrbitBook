@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace OrbitBook.Domain.Entities
 {
     public class Destination
     {
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public int TypeId { get; set; }
         public string Name { get; set; } = string.Empty;

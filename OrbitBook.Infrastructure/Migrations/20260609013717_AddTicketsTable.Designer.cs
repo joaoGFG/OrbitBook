@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Oracle.EntityFrameworkCore.Metadata;
 using OrbitBook.Infrastructure.Data;
@@ -11,9 +12,11 @@ using OrbitBook.Infrastructure.Data;
 namespace OrbitBook.Infrastructure.Migrations
 {
     [DbContext(typeof(OrbitBookDbContext))]
-    partial class OrbitBookDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609013717_AddTicketsTable")]
+    partial class AddTicketsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -116,38 +119,6 @@ namespace OrbitBook.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("BOOKING_STATUSES", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Reserva criada aguardando confirmação de pagamento",
-                            Name = "PENDENTE"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Pagamento aprovado e reserva confirmada",
-                            Name = "CONFIRMADO"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Missão em andamento — viajante em trânsito",
-                            Name = "EM_MISSAO"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Missão concluída com sucesso e retorno confirmado",
-                            Name = "CONCLUIDO"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Reserva cancelada pelo viajante ou pela operadora",
-                            Name = "CANCELADO"
-                        });
                 });
 
             modelBuilder.Entity("OrbitBook.Domain.Entities.Destination", b =>
@@ -190,104 +161,6 @@ namespace OrbitBook.Infrastructure.Migrations
                     b.HasIndex("TypeId");
 
                     b.ToTable("DESTINATIONS", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            AvailableSeats = 6,
-                            BasePrice = 450000m,
-                            Capacity = 6,
-                            Description = "Voo suborbital de 11 minutos.",
-                            DistanceKm = 107L,
-                            ImageUrl = "https://orbitbook.com/img/new-shepard.jpg",
-                            Name = "Blue Origin New Shepard",
-                            TypeId = 1
-                        },
-                        new
-                        {
-                            Id = 2,
-                            AvailableSeats = 4,
-                            BasePrice = 350000m,
-                            Capacity = 4,
-                            Description = "Voo suborbital com decolagem por aeronave.",
-                            DistanceKm = 88L,
-                            ImageUrl = "https://orbitbook.com/img/vss-unity.jpg",
-                            Name = "Virgin Galactic VSS Unity",
-                            TypeId = 1
-                        },
-                        new
-                        {
-                            Id = 3,
-                            AvailableSeats = 4,
-                            BasePrice = 55000000m,
-                            Capacity = 4,
-                            Description = "Estadia de 14 dias na primeira estação espacial.",
-                            DistanceKm = 420L,
-                            ImageUrl = "https://orbitbook.com/img/axiom-station.jpg",
-                            Name = "Axiom Station Ax-4",
-                            TypeId = 2
-                        },
-                        new
-                        {
-                            Id = 4,
-                            AvailableSeats = 4,
-                            BasePrice = 35000000m,
-                            Capacity = 4,
-                            Description = "Missão de 7 dias em órbita baixa.",
-                            DistanceKm = 380L,
-                            ImageUrl = "https://orbitbook.com/img/crew-dragon.jpg",
-                            Name = "SpaceX Crew Dragon LEO",
-                            TypeId = 2
-                        },
-                        new
-                        {
-                            Id = 5,
-                            AvailableSeats = 3,
-                            BasePrice = 40000000m,
-                            Capacity = 3,
-                            Description = "Parceria internacional para estadia de 10 dias.",
-                            DistanceKm = 390L,
-                            ImageUrl = "https://orbitbook.com/img/tiangong.jpg",
-                            Name = "Estação Orbital Chinesa Tiangong",
-                            TypeId = 2
-                        },
-                        new
-                        {
-                            Id = 6,
-                            AvailableSeats = 2,
-                            BasePrice = 150000000m,
-                            Capacity = 2,
-                            Description = "Missão de 8 dias ao redor da Lua sem pouso.",
-                            DistanceKm = 384400L,
-                            ImageUrl = "https://orbitbook.com/img/artemis-flyby.jpg",
-                            Name = "Artemis Lunar Flyby",
-                            TypeId = 3
-                        },
-                        new
-                        {
-                            Id = 7,
-                            AvailableSeats = 2,
-                            BasePrice = 250000000m,
-                            Capacity = 2,
-                            Description = "Pouso na superfície lunar por 5 dias.",
-                            DistanceKm = 384400L,
-                            ImageUrl = "https://orbitbook.com/img/lunar-gateway.jpg",
-                            Name = "Missão Lunar Gateway Alpha",
-                            TypeId = 3
-                        },
-                        new
-                        {
-                            Id = 8,
-                            AvailableSeats = 12,
-                            BasePrice = 500000000m,
-                            Capacity = 12,
-                            Description = "Missão pioneira de 2 anos para colonização.",
-                            DistanceKm = 225000000L,
-                            ImageUrl = "https://orbitbook.com/img/mars-colony.jpg",
-                            Name = "SpaceX Mars Colony — Alpha Wave",
-                            TypeId = 4
-                        });
                 });
 
             modelBuilder.Entity("OrbitBook.Domain.Entities.DestinationType", b =>
@@ -309,32 +182,6 @@ namespace OrbitBook.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("DESTINATION_TYPES", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Voo acima de 100km com experiência de microgravidade por até 30 minutos",
-                            Name = "SUBORBITAL"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Órbita baixa terrestre entre 350km e 420km de altitude",
-                            Name = "ORBITA_LEO"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Missões para flyby ou pouso na superfície lunar",
-                            Name = "LUNAR"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Missões de longa duração para colonização de Marte",
-                            Name = "MARCIANO"
-                        });
                 });
 
             modelBuilder.Entity("OrbitBook.Domain.Entities.Passenger", b =>
@@ -453,20 +300,6 @@ namespace OrbitBook.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ROLES", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Usuário final que busca e reserva experiências espaciais",
-                            Name = "VIAJANTE"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Administrador com acesso total à plataforma OrbitBook",
-                            Name = "ADMIN"
-                        });
                 });
 
             modelBuilder.Entity("OrbitBook.Domain.Entities.Ticket", b =>
@@ -543,17 +376,6 @@ namespace OrbitBook.Infrastructure.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("USERS_ORBIT", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            DocumentNumber = "00000000000",
-                            Email = "admin@orbitbook.com",
-                            Name = "Admin OrbitBook",
-                            PasswordHash = "$2a$11$/tKJLtMjYT4LSSfGaiFdyOM6X5fnzM1q1vEMEacM0uReqC2Wsg1sG",
-                            RoleId = 2
-                        });
                 });
 
             modelBuilder.Entity("OrbitBook.Domain.Entities.AiRecommendation", b =>

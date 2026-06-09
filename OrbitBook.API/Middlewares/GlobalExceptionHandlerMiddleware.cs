@@ -34,7 +34,7 @@ namespace OrbitBook.API.Middlewares
             {
                 StatusCode = context.Response.StatusCode,
                 Message = "Ocorreu um erro interno no servidor.",
-                Detailed = exception.Message // Idealmente envia-se detalhes apenas em DEV
+                Detailed = exception.Message 
             };
 
             var jsonResponse = JsonSerializer.Serialize(response);
