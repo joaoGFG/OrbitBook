@@ -31,7 +31,7 @@ namespace OrbitBook.Infrastructure.Data
             modelBuilder.Entity<BookingStatus>().ToTable("BOOKING_STATUSES");
             modelBuilder.Entity<Booking>().ToTable("BOOKINGS");
             modelBuilder.Entity<Passenger>().ToTable("PASSENGERS");
-            modelBuilder.Entity<Ticket>().ToTable("TICKETS");
+            modelBuilder.Entity<Ticket>().ToTable("Tickets");
             modelBuilder.Entity<Review>().ToTable("REVIEWS");
 
             // ─── CONFIGURAÇÃO DE PROPRIEDADES DECIMAIS ─────────────────────

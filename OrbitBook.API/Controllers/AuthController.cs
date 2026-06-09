@@ -51,13 +51,5 @@ namespace OrbitBook.API.Controllers
 
             return Ok(new { Message = "Você está autenticado!", Email = userEmail });
         }
-        // No AuthController, temporário só para gerar o hash
-        [HttpGet("gerar-hash")]
-        [AllowAnonymous]
-        public IActionResult GerarHash([FromQuery] string senha)
-        {
-            var hash = BCrypt.Net.BCrypt.HashPassword(senha);
-            return Ok(new { hash });
-        }
     }
 }
